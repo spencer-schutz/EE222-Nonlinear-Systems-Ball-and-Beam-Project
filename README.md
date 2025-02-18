@@ -1,9 +1,39 @@
-# ball-and-beam-project
-EE222/ME237 Nonlinear Systems, Spring 2022, Starter code for the course project.
+# UC Berkeley EE222/ME237 Nonlinear Systems Ball and Beam Project
+
+EE222/ME237 Nonlinear Systems, Spring 2025 Starter code and instructions for the course project.
+
+## Project Overview
+
+This project involves designing and testing nonlinear controllers for a ball and beam system. The objective is to develop controllers that stabilize the ball at a desired position on the beam. You will first implement your controllers in MATLAB simulations and later test them on physical hardware.
+
+## Understanding the Problem
+
+To gain a full understanding of the problem and project expectations, please refer to the following documents in this repository:
+
+[`EE_222_Course_Project.pdf`](EE_222_Course_Project.pdf) – Overview of the project and system model.
+
+[`EE222 Lab Feedback and FAQ.pdf`](EE222_Lab_Feedback_and_FAQ.pdf) – Common issues and recommendations.
+
+[`EE222_Lab_Part_1_Simulation.pdf`](EE222_Lab_Part_1_Simulation.pdf) – Instructions for running simulation.
+
+[`EE222_Lab_Part_2_Hardware_Testing.pdf`](EE222_Lab_Part_2_Hardware_Testing.pdf) – Instructions for hardware testing. (To be updated)
 
 ## Code Instructions
-- Install MATLAB and Simulink by using the Berkeley academic license.
-- Run `setup.m` or add the repository and the subfolders to the matlab path.
-- You only need to change one file for developing your controller: `studentControllerInterface.m`
-- To test your controller, run either `run_matlab_ball_and_beam.m` or `run_simulink_ball_and_beam.m`.
-- For more details, please read the attached [pdf](EE_222_Course_Project.pdf).
+
+### Prerequisites
+
+Install MATLAB and Simulink using the Berkeley academic license.
+
+### Getting Started
+
+Clone or fork this repository.
+
+Run `setup.m` or manually add the repository and its subfolders to the MATLAB path.
+
+Modify only studentControllerInterface.m to implement your controller.
+
+To test your controller:
+
+Run `run_matlab_ball_and_beam.m` for a MATLAB-based simulation.
+
+Run `run_simulink_ball_and_beam.m` for a Simulink-based simulation.
