@@ -10,7 +10,7 @@ This project involves designing and testing nonlinear controllers for a ball and
 
 To gain a full understanding of the problem and project expectations, please refer to the following documents in this repository:
 
-[`EE_222_Course_Project.pdf`](EE_222_Course_Project.pdf) – Overview of the project and system model.
+[`EE_222_Course_Project.pdf`](EE_222_Course_Project.pdf) – Overview of the project and system model. (Disregard the due dates and GitHub link in this older document)
 
 [`EE222 Lab Feedback and FAQ.pdf`](EE222_Lab_Feedback_and_FAQ.pdf) – Common issues and recommendations.
 
