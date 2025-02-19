@@ -7,6 +7,7 @@ function [p_ref, v_ref, a_ref] = get_ref_traj(t)
 %       p_ref: reference position of the ball
 %       v_ref: reference velocity of the ball
 %       a_ref: reference acceleration of the ball
+    coder.allowpcode('plain');
     amplitude = 0.04; % m
     period = 10; % sec
     
