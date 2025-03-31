@@ -6,7 +6,7 @@ clear all
 x0 = [-0.19; 0.00; 0; 0];
 t0 = 0;
 % Simulation time.
-T = 10;
+T = 20;
 % Sampling time of the controller
 dt = 0.01;
 % ode function to use.
@@ -35,6 +35,10 @@ x = x0;
 t = t0;
 end_simulation = false;
 %% Run simulation.
+%%%%%% Added By S. Schutz %%%%%%%%%%%
+% Run initialization function
+controller_handle.initController()
+
 % _t indicates variables for the current loop.
 tstart = tic;
 while ~end_simulation
@@ -46,7 +50,7 @@ while ~end_simulation
     if verbose
         print_log(t, x, u);    
     end
-    tend = toc(tstart);    
+    tend = toc(tstart);
     us = [us, u];          
     theta_ds = [theta_ds, theta_d];
     %% Run simulation for one time step.
