@@ -18,6 +18,7 @@ plot_animation = true;
 % save animation to video if true.
 save_video = false;
 
+% controller_handle = Bosio_studentControllerInterface();
 controller_handle = Schutz_studentControllerInterface();
 u_saturation = 10;
 
