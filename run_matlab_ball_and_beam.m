@@ -6,7 +6,7 @@ clear all
 x0 = [-0.19; 0.00; 0; 0];
 t0 = 0;
 % Simulation time.
-T = 10;
+T = 90;
 % Sampling time of the controller
 dt = 0.01;
 % ode function to use.
@@ -19,6 +19,7 @@ plot_animation = true;
 save_video = false;
 
 % controller_handle = Bosio_studentControllerInterface();
+% controller_handle = SY_studentControllerInterface();
 controller_handle = Schutz_studentControllerInterface();
 u_saturation = 10;
 
