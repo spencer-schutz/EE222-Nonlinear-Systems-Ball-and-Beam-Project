@@ -14,13 +14,13 @@ ode_func = @ode45;
 % print log for each timestep if true.
 verbose = false;
 % plot animation if true.
-plot_animation = true;
+plot_animation = false;
 % save animation to video if true.
 save_video = false;
 
 % controller_handle = Bosio_studentControllerInterface();
 % controller_handle = SY_studentControllerInterface();
-controller_handle = Schutz_studentControllerInterface();
+controller_handle = Part1_studentControllerInterface();
 u_saturation = 10;
 
 % Initialize traces.
@@ -37,10 +37,6 @@ x = x0;
 t = t0;
 end_simulation = false;
 %% Run simulation.
-%%%%%% Added By S. Schutz %%%%%%%%%%%
-% Run initialization function
-controller_handle.initController()
-
 % _t indicates variables for the current loop.
 tstart = tic;
 while ~end_simulation
