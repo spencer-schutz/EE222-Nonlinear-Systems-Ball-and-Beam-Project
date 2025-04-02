@@ -10,13 +10,14 @@ classdef Schutz_studentControllerInterface < matlab.System
         model_params = struct('r_g',0.0254,'L',0.4255,'g',9.81,'K',1.5,'tau',0.025)
         
         % S. Schutz - helper variables
-        nx = 4;
-        nu = 1;
+        nx = 4; % number of states
+        nz = 2; % number of measurements
+        nu = 1; % number of inputs
         
         % S. Schutz - state estimation
-        u = 0; % previous input
-        x_est = [-.19; 0; 0; 0]; % state estimation
-        int_e = 0;
+        u = 0; % init with 0
+        xm = [-.19; 0; 0; 0]; % init with x0
+        Pm = diag([0.05, 0, 0.01, 0]); % init with P0
 
     end
 
@@ -45,166 +46,72 @@ classdef Schutz_studentControllerInterface < matlab.System
             K = obj.model_params.K;
             tau = obj.model_params.tau;
             nx = obj.nx;
+            nz = obj.nz;
             nu = obj.nu;
+            
+            %% S. Schutz - State Estimation = EKF (DT)
+            % 0. Design Parameters - process and measurement variances
+            Svv = diag([0.05, 0.001, .0175, .00175]);
+            Sww = diag([0.05, 0.0175]);
 
-            %% S. Schutz - State Estimator = Cheating w. known X0 + Dynamics
-            % Updates property x_est
-            t_prev = obj.t_prev;
-            x_prev = obj.x_est;
-            u_prev = obj.u;
-            ode_opt = odeset('Events', @event_ball_out_of_range);
-            [t_soln, x_soln] = ode45(@(t,x) ball_and_beam_dynamics(t, x, u_prev), linspace(t_prev, t, 100), x_prev, ode_opt);
-            x_est = x_soln(end,:)';
-            %disp(x_est)
-            obj.x_est = x_est;
+            % 1. Predict state - rollout discretized NL dynamics (forward Euler)
+            xm_prev = obj.xm; % from previous iteration 
+            u_prev = obj.u; % known
+            dxdt = [xm_prev(2);
+                    (5*g/7)*(r_g/L)*sin(xm_prev(3)) - (5/7) * (L/2-xm_prev(1)) * (r_g/L)^2 * xm_prev(4)^2 * (cos(xm_prev(3)))^2 ;
+                    xm_prev(4);
+                    -xm_prev(4)/tau + (K/tau)*u_prev]; % CT NL dynamics
+            dt = t - obj.t_prev; % get sample time
+            xp_now = xm_prev + dt*dxdt; % forward Euler
 
-            %% S. Schutz - DLQR
-            % 1. Linearize SS about x_est
-            A_est = [0, 1, 0, 0;
-                (5*r_g^2*x_est(4)^2*cos(x_est(3))^2)/(7*L^2), 0, (5*r_g*(2*L*g*cos(x_est(3)) + L*r_g*x_est(4)^2*sin(2*x_est(3)) - 2*r_g*x_est(1)*x_est(4)^2*sin(2*x_est(3))))/(14*L^2), -(5*r_g^2*x_est(4)*cos(x_est(3))^2*(L - 2*x_est(1)))/(7*L^2);
-                0, 0, 0, 1;
-                0, 0, 0, -1/tau];
-            B_est = [0;0;0;K/tau]; 
+            % 2. Predict variance - linearize about last estimate
+            Pm_prev = obj.Pm; % from previous iteration 
+            A_prev = [1, dt, 0, 0;
+                    (5*dt*r_g^2*xm_prev(4)^2*cos(xm_prev(3))^2)/(7*L^2),  1, (5*dt*r_g*(2*L*g*cos(xm_prev(3)) + L*r_g*xm_prev(4)^2*sin(2*xm_prev(3)) - 2*r_g*xm_prev(1)*xm_prev(4)^2*sin(2*xm_prev(3))))/(14*L^2), -(5*dt*r_g^2*xm_prev(4)*cos(xm_prev(3))^2*(L - 2*xm_prev(1)))/(7*L^2);
+                     0,  0,  1, dt;
+                     0,  0,  0, 1 - dt/tau]; % linearize DT NL dyn about xm_prev
+            L_prev = dt*eye(nx); % linearize DT NL dyn about v
+            Pp_now = A_prev*Pm_prev*A_prev' + L_prev*Svv*L_prev';
 
-            % 2. Discretize
-            % Euler is ok b/c already assumed const dyn in linearization)
-            Ts = t-t_prev;
-            A_est_d = eye(nx)+A_est*Ts;
-            B_est_d = B_est*Ts;
+            % 3. Measurement update
+            H_now = [1 0 0 0; 0 0 1 0];
+            M_now = eye(nz);
+            z_now = [p_ball; theta];
+            zp_now = H_now*xp_now;
+            K_now = Pp_now*H_now'*(H_now*Pp_now*H_now' + M_now*Sww*M_now')^-1;
+            xm_now = xp_now + K_now*(z_now - zp_now);
+            Pm_now = (eye(nx) - K_now*H_now) * Pp_now * (eye(nx)-K_now*H_now)' + K_now*M_now*Sww*M_now'*K_now';
 
-            % 3. Given r, find x_des and u_des
+            % Save new values
+            obj.xm = xm_now;
+            obj.Pm = Pm_now;
+
+            %% S. Schutz - Controller = Reference Tracking LQR (DT)
+            % 1. Get reference
             [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            r = p_ball_ref;
-            C_r = [1 0 0 0];
-            D_r = [0];
-            sol = [eye(nx)-A_est_d -B_est_d; C_r D_r]^-1*[zeros(nx,1); eye(nu,1)]*r;
-            x_des = sol(1:nx, 1);
-            u_des = sol(end,1);
+            x_star = [p_ball_ref; v_ball_ref; 0; 0];
+            u_star = 0;
 
-            % 3. Linearize & Discretize (Euler) about x_des
-            A_des = [0, 1, 0, 0;
-                (5*r_g^2*x_des(4)^2*cos(x_des(3))^2)/(7*L^2), 0, (5*r_g*(2*L*g*cos(x_des(3)) + L*r_g*x_des(4)^2*sin(2*x_des(3)) - 2*r_g*x_des(1)*x_des(4)^2*sin(2*x_des(3))))/(14*L^2), -(5*r_g^2*x_des(4)*cos(x_des(3))^2*(L - 2*x_des(1)))/(7*L^2);
-                0, 0, 0, 1;
-                0, 0, 0, -1/tau];
-            B_des = [0;0;0;K/tau]; 
-            A_des_d = eye(nx)+A_des*Ts;
-            B_des_d = B_des*Ts;
+            % 2. Linearize DT Dyn about current reference
+            A_star = [1, dt, 0, 0;
+                    (5*dt*r_g^2*x_star(4)^2*cos(x_star(3))^2)/(7*L^2),  1, (5*dt*r_g*(2*L*g*cos(x_star(3)) + L*r_g*x_star(4)^2*sin(2*x_star(3)) - 2*r_g*x_star(1)*x_star(4)^2*sin(2*x_star(3))))/(14*L^2), -(5*dt*r_g^2*x_star(4)*cos(x_star(3))^2*(L - 2*x_star(1)))/(7*L^2);
+                     0,  0,  1, dt;
+                     0,  0,  0, 1 - dt/tau]; % linearize DT NL dyn about xm_prev
+            B_star = [0;0;0;dt*(K/tau)];
 
-            % 4. DLQR weights
-            Q = diag([2000, 1, 1, 1]);
-            R = diag(1);
+            % 4. LQR weights
+            Q = diag([1000, 500, 1, 1]);
+            R = diag(0.1);
 
-            % 5. Apply DLQR
-            [K_lqr,~,~] = dlqr(A_des_d, B_des_d, Q, R);
-            u = u_des - K_lqr*(x_est-x_des);
+            % 5. Apply LQR
+            [K_lqr,~,~] = dlqr(A_star, B_star, Q, R);
+            u = u_star - K_lqr*(xm_now-x_star);
             V_servo = u;
 
             % 6. Update properties
             obj.t_prev = t;
             obj.u = u;
 
-            
-            %% S. Schutz - Reference Tracking LQR
-            % % 1. Linearize SS about x_est
-            % A_est = [0, 1, 0, 0;
-            %     (5*r_g^2*x_est(4)^2*cos(x_est(3))^2)/(7*L^2), 0, (5*r_g*(2*L*g*cos(x_est(3)) + L*r_g*x_est(4)^2*sin(2*x_est(3)) - 2*r_g*x_est(1)*x_est(4)^2*sin(2*x_est(3))))/(14*L^2), -(5*r_g^2*x_est(4)*cos(x_est(3))^2*(L - 2*x_est(1)))/(7*L^2);
-            %     0, 0, 0, 1;
-            %     0, 0, 0, -1/tau];
-            % B_est = [0;0;0;K/tau]; 
-            % 
-            % % 2. Given r, find x_des and u_des
-            % [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            % r = p_ball_ref;
-            % 
-            % C_r = [1 0 0 0];
-            % D_r = [0];
-            % sol = [A_est B_est; C_r D_r]^-1*[zeros(nx,1); eye(nu,1)]*r;
-            % x_des = sol(1:nx, 1);
-            % u_des = sol(end,1);
-            % 
-            % % 3. Linearize about x_des
-            % A_des = [0, 1, 0, 0;
-            %     (5*r_g^2*x_des(4)^2*cos(x_des(3))^2)/(7*L^2), 0, (5*r_g*(2*L*g*cos(x_des(3)) + L*r_g*x_des(4)^2*sin(2*x_des(3)) - 2*r_g*x_des(1)*x_des(4)^2*sin(2*x_des(3))))/(14*L^2), -(5*r_g^2*x_des(4)*cos(x_des(3))^2*(L - 2*x_des(1)))/(7*L^2);
-            %     0, 0, 0, 1;
-            %     0, 0, 0, -1/tau];
-            % B_des = [0;0;0;K/tau]; 
-            % 
-            % % 4. LQR weights
-            % Q = diag([1000, 1, 1, 1]);
-            % R = diag(1);
-            % 
-            % % 5. Apply LQR
-            % [K_lqr,~,~] = lqr(A_des, B_des, Q, R);
-            % u = u_des - K_lqr*(x_est-x_des);
-            % V_servo = u;
-            % 
-            %  % 6. Update properties
-            % obj.t_prev = t;
-            % obj.u = u;
-
-            %% S. Schutz - LQI
-            % % 1. Linearize SS about x_est
-            % A_est = [0, 1, 0, 0;
-            %     (5*r_g^2*x_est(4)^2*cos(x_est(3))^2)/(7*L^2), 0, (5*r_g*(2*L*g*cos(x_est(3)) + L*r_g*x_est(4)^2*sin(2*x_est(3)) - 2*r_g*x_est(1)*x_est(4)^2*sin(2*x_est(3))))/(14*L^2), -(5*r_g^2*x_est(4)*cos(x_est(3))^2*(L - 2*x_est(1)))/(7*L^2);
-            %     0, 0, 0, 1;
-            %     0, 0, 0, -1/tau];
-            % B_est = [0;0;0;K/tau]; 
-            % 
-            % % 2. Get r
-            % [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            % r = p_ball_ref;
-            % 
-            % % 3. Update int_e
-            % int_e_old = obj.int_e;
-            % dt = (t-t_prev)/99;
-            % e = x_soln(:,1)' - r;
-            % int_e_since = sum(e*dt);
-            % int_e_new = int_e_old + int_e_since;
-            % obj.int_e = int_e_new;
-            % disp(int_e_new);
-            % 
-            % % 3. Augmented SS
-            % Ai = [0 [1 0 0 0]; zeros(nx, 1) A_est];
-            % Bi = [0; B_est];
-            % 
-            % % 4. LQI Weights
-            % Qi = diag([10, zeros(1, nx)]);
-            % Ri = 1;
-            % 
-            % % 5. Apply LQI
-            % [K_lqi,~,~] = lqr(Ai, Bi, Qi, Ri);
-            % u = -K_lqi*[int_e_new;x_est];
-            % V_servo = u;
-            % 
-            %  % 6. Update properties
-            % obj.t_prev = t;
-            % obj.u = u; 
-            
-            %% Sample Controller: Simple Proportional Controller
-            % t_prev = obj.t_prev;
-            % % Extract reference trajectory at the current timestep.
-            % [p_ball_ref, v_ball_ref, a_ball_ref] = get_ref_traj(t);
-            % 
-            % % Decide desired servo angle based on simple proportional feedback.
-            % k_p = 10; % original value = 3
-            % theta_d = - k_p * (p_ball - p_ball_ref);
-            % 
-            % % Make sure that the desired servo angle does not exceed the physical
-            % % limit. This part of code is not necessary but highly recommended
-            % % because it addresses the actual physical limit of the servo motor.
-            % theta_saturation = 56 * pi / 180;    
-            % theta_d = min(theta_d, theta_saturation);
-            % theta_d = max(theta_d, -theta_saturation);
-            % 
-            % % Simple position control to control servo angle to the desired
-            % % position.
-            % k_servo = 5; % original value = 10
-            % V_servo = k_servo * (theta_d - theta);
-            % obj.u = V_servo;
-            % 
-            % % Update class properties if necessary.
-            % obj.t_prev = t;
-            % obj.theta_d = theta_d;
         end
     end
     
