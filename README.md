@@ -1,39 +1,22 @@
 # UC Berkeley EE222/ME237 Nonlinear Systems Ball and Beam Project
 
-EE222/ME237 Nonlinear Systems, Spring 2025 Starter code and instructions for the course project.
+EE222/ME237 Nonlinear Systems, Spring 2025 Course Project
 
-## Project Overview
+## Group Members
 
-This project involves designing and testing nonlinear controllers for a ball and beam system. The objective is to develop controllers that stabilize the ball at a desired position on the beam. You will first implement your controllers in MATLAB simulations and later test them on physical hardware.
+Carlo Bosio, Seoyeon Choi, Spencer Schutz
 
-## Understanding the Problem
+## Abstract
 
-To gain a full understanding of the problem and project expectations, please refer to the following documents in this repository:
+A ball-and-beam is a classic nonlinear system for testing observer and control designs. We present an Extended Kalman Filter, tracking LQR, and approximate feedback linearization with LQR and discuss the performance following sinusoidal and square wave references. Our best performing implementation starts with the tracking LQR then switches to the feedback linearization when the error goes below a threshold (score = 0.83 for sinusoidal, 3.20 for square).
 
-[`EE_222_Course_Project.pdf`](EE_222_Course_Project.pdf) – Overview of the project and system model. (Disregard the due dates and GitHub link in this older document)
+## Simulation Results
+![Scores](files/table_scores.PNG)
 
-[`EE222 Lab Feedback and FAQ.pdf`](EE222_Lab_Feedback_and_FAQ.pdf) – Common issues and recommendations.
+You can see the videos of the simulations below:
 
-[`EE222_Lab_Part_1_Simulation.pdf`](EE222_Lab_Part_1_Simulation.pdf) – Instructions for running simulation.
+1. [Switching](files/Swtiching.mp4)
 
-[`EE222_Lab_Part_2_Hardware_Testing.pdf`](EE222_Lab_Part_2_Hardware_Testing.pdf) – Instructions for hardware testing. (To be updated)
+2. [LQR](files/LQR.mp4)
 
-## Code Instructions
-
-### Prerequisites
-
-Install MATLAB and Simulink using the Berkeley academic license.
-
-### Getting Started
-
-Clone or fork this repository.
-
-Run `setup.m` or manually add the repository and its subfolders to the MATLAB path.
-
-Modify only studentControllerInterface.m to implement your controller.
-
-To test your controller:
-
-Run `run_matlab_ball_and_beam.m` for a MATLAB-based simulation.
-
-Run `run_simulink_ball_and_beam.m` for a Simulink-based simulation.
+3. [FL + LQR](files/FL_LQR.mp4)

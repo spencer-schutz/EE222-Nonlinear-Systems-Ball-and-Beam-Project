@@ -2,9 +2,9 @@ setup_simulink_simulation;
 % Initial state.
 x0 = [-0.19; 0.00; 0; 0];
 % Simulation time.
-T = 10;
+T = 90;
 % plot animation if true.
-plot_animation = true;
+plot_animation = false;
 % save animation to video if true.
 save_video = false;
 

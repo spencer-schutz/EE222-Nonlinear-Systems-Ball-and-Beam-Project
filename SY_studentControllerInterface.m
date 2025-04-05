@@ -131,8 +131,8 @@ classdef SY_studentControllerInterface < matlab.System
             Bd = sysd.B;
             
             % Apply DLQR
-            Q = diag([800, 0.01, 1, 1]);
-            R = diag(0.5);
+            Q = diag([500, 500, 1, 1]);
+            R = diag(0.1);
             [K_lqr, ~, ~] = dlqr(Ad, Bd, Q, R);
 
             % Get control

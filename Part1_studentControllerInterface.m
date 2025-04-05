@@ -1,5 +1,5 @@
 classdef Part1_studentControllerInterface < matlab.System
-    properties (Access = private)
+    properties (Access = public)
         % Time, reference, measurement, input
         t = 0;
         t_prev = -1;
@@ -76,8 +76,13 @@ classdef Part1_studentControllerInterface < matlab.System
             %ExtendedHighGain(obj)
 
             % Choose controller 
-            %FeedbackLinearization(obj)
-            LQR(obj)
+            % if obj.t <= 2
+            %     LQR(obj)
+            % else
+            %     FeedbackLinearization(obj)
+            % end
+            FeedbackLinearization(obj)
+            % LQR(obj)
             %PID(obj)
 
             % Save output
@@ -172,7 +177,7 @@ classdef Part1_studentControllerInterface < matlab.System
             sat_sig_theta = 0.8;
             
             % Gains
-            epsilon = 0.04;
+            epsilon = 0.025;
             
             % State parameters
             t_prev = obj.t_prev; 
@@ -192,8 +197,8 @@ classdef Part1_studentControllerInterface < matlab.System
             sig_x = sig_x_prev + dt * 1/epsilon^3*(p_ball - x_prev(1));
             
             x_est(3) = x_prev(3) + dt * (x_prev(4) + 3/epsilon*(theta - x_prev(3)));
-            x_est(4) = x_prev(4) + dt * (-x_prev(4)/tau + K/tau * u_prev + sig_theta_prev + 9/epsilon^2*(theta - x_prev(3)));
-            sig_theta = sig_theta_prev + dt * 27/epsilon^3*(theta - x_prev(3));
+            x_est(4) = x_prev(4) + dt * (-x_prev(4)/tau + K/tau * u_prev + sig_theta_prev + 3/epsilon^2*(theta - x_prev(3)));
+            sig_theta = sig_theta_prev + dt * 1/epsilon^3*(theta - x_prev(3));
             
             sig_x = min(abs(sig_x),sat_sig_x)*sign(sig_x);
             sig_theta = min(abs(sig_theta),sat_sig_theta)*sign(sig_theta);
@@ -230,9 +235,9 @@ classdef Part1_studentControllerInterface < matlab.System
             
             % Get higher order derivatives of reference
             if t >= 0.1
-                p = polyfit(t-dt*windowSize:dt:t, d2traj_ref(end-windowSize:end), polyOrder);
-                d3p_ref = polyval(polyder(p), t);
-                d4p_ref = polyval(polyder(polyder(p)), t);
+                %p = polyfit(t-dt*windowSize:dt:t, d2traj_ref(end-windowSize:end), polyOrder);
+                d3p_ref = 0; %polyval(polyder(p), t);
+                d4p_ref = 0; %polyval(polyder(polyder(p)), t);
             else
                 d3p_ref = 0;
                 d4p_ref = 0;
@@ -250,22 +255,43 @@ classdef Part1_studentControllerInterface < matlab.System
                  0 0 0 0];
             B = [0 0 0 1]';
             % discretize - might want to pull up to initialization (does dt change?)
-            sys = ss(A,B,[1 0 0 0], 0);
-            sysd = c2d(sys, dt);
-            Ad = sysd.A;
-            Bd = sysd.B;
+            Ad = expm(A*dt);
+            n = size(A,1);
+            
+            % Check if A is invertible
+            if rank(A) == n
+                % Use closed-form formula for Bd
+                Bd = A \ (Ad - eye(n)) * B;
+            else
+                % A is singular; perform numerical integration
+                Nsteps = 100;  % Number of integration steps
+                tau = linspace(0, dt, Nsteps);
+                dtau = dt/(Nsteps - 1);
+                Bd = zeros(n, size(B,2));
+                for i = 1:Nsteps
+                    Bd = Bd + expm(A * tau(i)) * B * dtau;
+                end
+            end
+            
+            % sys = ss(A,B,[1 0 0 0], 0);
+            % sysd = c2d(sys, dt);
+            % Ad = sysd.A;
+            % Bd = sysd.B;
             
             % Apply DLQR
-            Q = diag([800, 0.01, 1, 1]);
-            R = diag(0.5);
-            [K_lqr, ~, ~] = dlqr(Ad, Bd, Q, R);
+            Q = diag([800, 50, 1, 1]);
+            R = diag(0.3);
+            % [K_lqr, ~, ~] = dlqr(Ad, Bd, Q, R);
+            [X,~,~] = dare(Ad, Bd, Q, R);
+            K_lqr = (R + Bd' * X * Bd) \ (Bd' * X * Ad);
+
 
             % Get control
             e1 = x_est(1) - p_ref;
             e2 = x_est(2) - dp_ref;
             e3 = a*sin(x_est(3)) - d2p_ref;
             e4 = a*x_est(4)*cos(x_est(3)) - d3p_ref;
-            u = 1/g_x * (-f_x + d4p_ref - K_lqr(1)*e1 - K_lqr(2)*e2 - K_lqr(3)*e3 - K_lqr(4)*e4);
+            u = 1/g_x * (-f_x + obj.sig_theta + d4p_ref - K_lqr(1)*e1 - K_lqr(2)*e2 - K_lqr(3)*e3 - K_lqr(4)*e4);
 
             % Update properties
             obj.u = u;
@@ -293,7 +319,10 @@ classdef Part1_studentControllerInterface < matlab.System
             R = diag(0.1);
 
             % 3. Apply LQR
-            [K_lqr,~,~] = dlqr(A_star, B_star, Q, R);
+            % [K_lqr,~,~] = dlqr(A_star, B_star, Q, R);
+            [X,~,~] = dare(A_star, B_star, Q, R);
+            K_lqr = (R + B_star' * X * B_star) \ (B_star' * X * A_star);
+            
             x_est = obj.xm;
             u = u_star - K_lqr*(x_est-x_star);
 
@@ -313,7 +342,7 @@ classdef Part1_studentControllerInterface < matlab.System
             theta = obj.meas(2,1);
          
             % Decide desired servo angle based on simple proportional feedback.
-            k_p = 3;
+            k_p = 20;
             k_d = 10;
             obj.theta_d = - k_p * (p_est - p_ball_ref) - k_d*v_est;
 
@@ -323,7 +352,7 @@ classdef Part1_studentControllerInterface < matlab.System
 
             % Simple position control to control servo angle to the desired
             % position.
-            k_servo = 5;
+            k_servo = 6;
             u = k_servo * (obj.theta_d - theta);
             
             % Update parameters
