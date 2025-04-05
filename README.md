@@ -15,7 +15,7 @@ A ball-and-beam is a classic nonlinear system for testing observer and control d
 
 You can see the videos of the simulations below:
 
-1. [Switching](files/Swtiching.mp4)
+1. [Switching](files/Switching.mp4)
 
 2. [LQR](files/LQR.mp4)
 
