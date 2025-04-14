@@ -16,7 +16,7 @@ classdef studentControllerInterface < matlab.System
            disp("Initialize.");
         end
 
-        function [V_servo, xm, dt] = stepImpl(obj, t, p_ball, theta)
+        function [V_servo, xm, xm_dot, theta, theta_dot, dt] = stepImpl(obj, t, p_ball, theta)
             %% 1. Setup
             % coder.extrinsic("dlqr");
             r_g = 0.0254;
@@ -35,8 +35,10 @@ classdef studentControllerInterface < matlab.System
             [p_ref, v_ref, a_ref] = get_ref_traj(t);
 
             %% 2. Observer - EKF
-            Svv = diag([0.01, 0.01, .01, .01]); % Svv = TUNING PARAMETER
-            Sww = diag([0.01, 0.01]); % Sww = TUNING PARAMETER
+            Svv = diag([0.01, 0.05, .02, .2]);
+            Sww = diag([1, 0.1]);
+%             Svv = diag([0.01, 0.01, .01, .01]); % Svv = TUNING PARAMETER
+%             Sww = diag([0.01, 0.01]); % Sww = TUNING PARAMETER
 
             % 2a. Predict state - rollout discretized NL dynamics (forward Euler)
             xm_prev = obj.xm;
@@ -80,8 +82,8 @@ classdef studentControllerInterface < matlab.System
             B_star = [0;0;0;dt*(K/tau)];
 
             % 3b. LQR Weights
-            Q = diag([1000, 500, 1, 1]);
-            R = diag(0.1);
+            Q = diag([1000, 100, 0.1, 1e-10]);
+            R = diag(0.4);
             
             % 3c. DARE
             max_iter = 100000;
@@ -95,7 +97,7 @@ classdef studentControllerInterface < matlab.System
                     %fprintf("Converged on Iteration %d\n", j);
                     break
                 elseif i == max_iter
-                    j = int64(i);
+                    j = int32(i);
                     fprintf("Failed to Converge: max_iter = %d\n", j);
                 end
                 P = P_new;
@@ -118,7 +120,10 @@ classdef studentControllerInterface < matlab.System
 
             %% End: Function Outputs, Step to Next Time
             V_servo = u_now;
-            xm = xm_now; % TODO - DELETE EXTRA OUTPUT WHEN DONE 
+            xm = xm_now(1,1); % TODO - DELETE EXTRA OUTPUT WHEN DONE 
+            xm_dot = xm_now(2,1);
+            theta = xm_now(3,1);
+            theta_dot = xm_now(4,1);
             obj.t_prev = t;
 
         end
