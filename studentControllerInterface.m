@@ -11,7 +11,7 @@ classdef studentControllerInterface < matlab.System
 
         % Integral
 %         sum_e = -0.4; % for LQR
-        sum_e = 0; % for FL
+        sum_e = -0.1; % for FL
 
     end
 
@@ -40,8 +40,8 @@ classdef studentControllerInterface < matlab.System
             [p_ref, v_ref, a_ref] = get_ref_traj(t);
 
             %% 2. Observer - EKF
-            Svv = diag([0.01, 0.05, .02, .2]);
-            Sww = diag([1, 0.1]);
+            Svv = diag([0.01, 0.05, .02, .2]); 
+            Sww = diag([10, 1]);
 
             % 2a. Predict state - rollout discretized NL dynamics (forward Euler)
             xm_prev = obj.xm;
@@ -155,7 +155,7 @@ classdef studentControllerInterface < matlab.System
 
             % 3b. LQR Weights
             Q = diag([1000, 100, 0.1, 1e-10]);
-            R = diag(0.004);
+            R = diag(0.06);
             
             % 3c. DARE
             max_iter = 100000;
@@ -183,7 +183,7 @@ classdef studentControllerInterface < matlab.System
             u_now = 1/g_x * (-f_x + 0 - K_lqr(1)*e1 - K_lqr(2)*e2 - K_lqr(3)*e3 - K_lqr(4)*e4);
 
             % 3.c.1. Add integral
-            Ke = 2;
+            Ke = 0.0;
             e_now = xm_now(1) - p_ref;
             obj.sum_e = obj.sum_e + e_now*dt;
             obj.sum_e = max(min(obj.sum_e, 1), -1);
