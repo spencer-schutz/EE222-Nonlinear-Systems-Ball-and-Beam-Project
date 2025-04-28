@@ -10,7 +10,9 @@ classdef studentControllerInterface < matlab.System
         Pm = diag([0.01, 0.01, 0.01, 0.01]); % P0 = TUNING PARAMETER
 
         % Integral
-        sum_e = 0;
+%         sum_e = -0.4; % for LQR
+        sum_e = 0; % for FL
+
     end
 
     methods(Access = protected)
@@ -40,8 +42,6 @@ classdef studentControllerInterface < matlab.System
             %% 2. Observer - EKF
             Svv = diag([0.01, 0.05, .02, .2]);
             Sww = diag([1, 0.1]);
-%             Svv = diag([0.01, 0.01, .01, .01]); % Svv = TUNING PARAMETER
-%             Sww = diag([0.01, 0.01]); % Sww = TUNING PARAMETER
 
             % 2a. Predict state - rollout discretized NL dynamics (forward Euler)
             xm_prev = obj.xm;
@@ -75,7 +75,7 @@ classdef studentControllerInterface < matlab.System
             obj.Pm = Pm_now;
            
             %% 3. Local Linearization-Based LQR
-            % 3a. Linearize discrete NL dynamics about desired (x_star, u_star)
+%             % 3a. Linearize discrete NL dynamics about desired (x_star, u_star)
 %             x_star = [p_ref; v_ref; 0; 0];
 %             u_star = 0;
 %             A_star =  [1, dt, 0, 0;
@@ -111,7 +111,8 @@ classdef studentControllerInterface < matlab.System
 %             u_now = u_star - K_lqr*(xm_now-x_star);
 %             
 %             % 3.c.1. Add integral
-%             Ke = 3;
+% %             Ke = 3;
+%             Ke = 0;
 %             e_now = xm_now(1) - p_ref;
 %             obj.sum_e = obj.sum_e + e_now*dt;
 %             obj.sum_e = max(min(obj.sum_e, 1), -1);
@@ -120,14 +121,6 @@ classdef studentControllerInterface < matlab.System
 % 
 %             % 3d. Update Parameters
 %             obj.u = u_now; 
-
-            % disp(A_star)
-            % disp(B_star)
-
-            % Check Ctrb, Obsv
-            % disp(rank([B_star A_star*B_star A_star^2*B_star A_star^3*B_star]));
-            % C = [1 0 0 0; 0 1 0 0];
-            % disp(rank([C; C*A_star; C*A_star^2; C*A_star^3]));
             
             %% FL+LQR
             a = 5/7*g*r_g/L;
