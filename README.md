@@ -11,7 +11,7 @@ Carlo Bosio, Seoyeon Choi, Spencer Schutz
 A ball-and-beam is a classic nonlinear system for testing observer and control designs. We present an Extended Kalman Filter, tracking LQR, and approximate feedback linearization with LQR and discuss the performance following sinusoidal and square wave references. Our two controllers have similar performance in simulations. In hardware experiements, FL + LQR performs better reaching final score of 1.63.
 
 ## Simulation Results
-![Scores](files/simulation_scores.PNG)
+![Scores](files/simulation_scores.png)
 
 You can see the videos of the simulations below:
 
@@ -20,7 +20,7 @@ You can see the videos of the simulations below:
 2. [FL + LQR](files/FL_LQR.mp4)
 
 ## Hardware Results
-![Scores](files/hardware_scores.PNG)
+![Scores](files/hardware_scores.png)
 
 You can see the videos of the hardware experiments below:
 
