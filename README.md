@@ -24,6 +24,6 @@ You can see the videos of the simulations below:
 
 You can see the videos of the hardware experiments below:
 
-1. [LQR]
+1. [LQR](files/lqr_hardware.mp4)
 
 2. [FL + LQR](files/fl_lqr_hardware.mp4)
